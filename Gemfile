@@ -58,6 +58,6 @@ end
 
 gem 'grape'
 gem 'grape-swagger'
-gem 'grape-swagger-rails' # Optional for Swagger UI
+gem 'grape-swagger-rails'
 
 

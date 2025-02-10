@@ -1,8 +1,7 @@
-# config/routes.rb
 Rails.application.routes.draw do
-  # Mounting Grape API
+  #Grape API
   mount Api::Base => '/'
 
-  # Optionally, for Swagger UI
-  mount GrapeSwaggerRails::Engine => '/swagger'
+  #Swagger UI
+  mount GrapeSwaggerRails::Engine => '/api-docs'
 end

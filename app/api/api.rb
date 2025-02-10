@@ -4,49 +4,103 @@ module Api
 
     #  Basic Authentication Middleware
     http_basic do |username, password|
-      username == 'admin' && password == 'password123' # Change this for security
+      username == 'admin' && password == 'password123'
     end
 
-    # before do
-    #   header 'Access-Control-Allow-Origin', '*'
-    #   header 'Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS'
-    #   header 'Access-Control-Allow-Headers', 'Origin, Content-Type, Accept, Authorization'
-    # end
-
-    # ✅ Simple "Hello World" endpoint
-    desc 'Returns Hello World message'
-    get :hello do
-      { message: 'Hello World from Grape API' }
-    end
-
-    # ✅ Returns the current time
-    desc 'Returns the current time'
-    get :time do
-      { time: Time.now }
-    end
-
-    # ✅ Products Endpoint
+    #  GET
     desc 'Returns a list of products'
     get :products do
-      [
-        { name: 'Laptop', price: 75000 },
-        { name: 'Mobile Phone', price: 25000 },
-        { name: 'Headphones', price: 5000 }
-      ]
+      Product.all
     end
 
-    # ✅ Swagger documentation
+    #  GET BY ID
+    desc 'Returns a product by ID'
+    params do
+      requires :id, type: Integer, desc: 'Product ID'
+    end
+    get 'products/:id' do
+      product = Product.find_by(id: params[:id])
+      error!('Product not found', 404) unless product
+      product
+    end
+
+    #  POST 
+    desc 'Creates a new product'
+    params do
+      requires :name, type: String, desc: 'Product Name'
+      requires :price, type: Integer, desc: 'Product Price'
+    end
+    post :products do
+      product = Product.create(name: params[:name], price: params[:price])
+      if product.persisted?
+        product
+      else
+        error!(product.errors.full_messages, 400)
+      end
+    end
+
+    #  PUT 
+    desc 'Updates a product'
+    params do
+      requires :id, type: Integer, desc: 'Product ID'
+      requires :name, type: String, desc: 'Product Name'
+      requires :price, type: Integer, desc: 'Product Price'
+    end
+    put 'products/:id' do
+      product = Product.find_by(id: params[:id])
+      error!('Product not found', 404) unless product
+
+      if product.update(name: params[:name], price: params[:price])
+        product
+      else
+        error!(product.errors.full_messages, 400)
+      end
+    end
+
+    #  PATCH 
+    desc 'Partially updates a product'
+    params do
+      requires :id, type: Integer, desc: 'Product ID'
+      optional :name, type: String, desc: 'Product Name'
+      optional :price, type: Integer, desc: 'Product Price'
+    end
+    patch 'products/:id' do
+      product = Product.find_by(id: params[:id])
+      error!('Product not found', 404) unless product
+
+      if product.update(declared(params, include_missing: false))
+        product
+      else
+        error!(product.errors.full_messages, 400)
+      end
+    end
+
+    #  DELETE 
+    desc 'Deletes a product'
+    params do
+      requires :id, type: Integer, desc: 'Product ID'
+    end
+    delete 'products/:id' do
+      product = Product.find_by(id: params[:id])
+      error!('Product not found', 404) unless product
+
+      product.destroy
+      { message: 'Product deleted successfully' }
+    end
+
+    #  Swagger Documentation
     add_swagger_documentation(
       info: {
         title: 'My Grape API',
-        description: 'This is a simple API with authentication and product listing'
+        description: 'API with authentication'
       },
       base_path: '/',
       security_definitions: {
         basic_auth: {
-          type: 'basic' #  Basic Authentication added
+          type: 'basic'
         }
-      }
+      },
+      security: [{ basic_auth: [] }] 
     )
   end
 end
