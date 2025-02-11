@@ -2,93 +2,89 @@ module Api
   class Base < Grape::API
     format :json
 
-    #  Basic Authentication Middleware
+    # Basic Authentication Middleware
     http_basic do |username, password|
-      username == 'admin' && password == 'password123'
+      username == 'admin' && password == 'password'    
     end
 
-    #  GET
-    desc 'Returns a list of products'
-    get :products do
-      Product.all
-    end
+    resource :products do
+      desc 'Returns a list of products'
+      get do
+        Product.all
+        #Product.all.pluck(:name, :price, :size , :color)
+      end
 
-    #  GET BY ID
-    desc 'Returns a product by ID'
-    params do
-      requires :id, type: Integer, desc: 'Product ID'
-    end
-    get 'products/:id' do
-      product = Product.find_by(id: params[:id])
-      error!('Product not found', 404) unless product
-      product
-    end
-
-    #  POST 
-    desc 'Creates a new product'
-    params do
-      requires :name, type: String, desc: 'Product Name'
-      requires :price, type: Integer, desc: 'Product Price'
-    end
-    post :products do
-      product = Product.create(name: params[:name], price: params[:price])
-      if product.persisted?
+      desc 'Returns a product by ID'
+      params do
+        requires :id, type: Integer, desc: 'Product ID'
+      end
+      get ':id' do  # Fixed route
+        product = Product.find_by(id: params[:id])
+        error!('Product not found', 404) unless product
         product
-      else
-        error!(product.errors.full_messages, 400)
+      end
+
+      desc 'Creates a new product'
+      params do
+        requires :name, type: String, desc: 'Product Name'
+        requires :price, type: Integer, desc: 'Product Price'
+        requires :size, type: Array[String], desc: 'Product Sizes (Array of Strings)'
+        requires :color, type: Array[String], desc: 'Product Colors (Array of Strings)'
+      end
+      post do
+        product = Product.create(
+          name: params[:name],
+          price: params[:price],
+          size: params[:size],  # Fixed missing comma
+          color: params[:color]  # Fixed missing comma
+        )
+        if product.persisted?
+          product
+        else
+          error!(product.errors.full_messages, 400)
+        end
+      end
+
+      desc 'Updates a product'
+      params do
+        requires :id, type: Integer, desc: 'Product ID'
+        requires :name, type: String, desc: 'Product Name'
+        requires :price, type: Integer, desc: 'Product Price'
+        optional :size, type: Array[String], desc: 'Product Sizes (Array of Strings)'
+        optional :color, type: Array[String], desc: 'Product Colors (Array of Strings)'
+      end
+      put ':id' do
+        product = Product.find_by(id: params[:id]) || error!('Product not found', 404)
+        product.update!(declared(params, include_missing: false))
+        product
+      end
+
+      desc 'Partially updates a product'
+      params do
+        requires :id, type: Integer, desc: 'Product ID'
+        optional :name, type: String, desc: 'Product Name'
+        optional :price, type: Integer, desc: 'Product Price'
+        optional :size, type: Array[String], desc: 'Product Sizes (Array of Strings)'
+        optional :color, type: Array[String], desc: 'Product Colors (Array of Strings)'
+      end
+      patch ':id' do
+        product = Product.find_by(id: params[:id]) || error!('Product not found', 404)
+        product.update!(declared(params, include_missing: false))
+        product
+      end
+
+      desc 'Deletes a product'
+      params do
+        requires :id, type: Integer, desc: 'Product ID'
+      end
+      delete ':id' do
+        product = Product.find_by(id: params[:id]) || error!('Product not found', 404)
+        product.destroy
+        { message: 'Product deleted successfully' }
       end
     end
 
-    #  PUT 
-    desc 'Updates a product'
-    params do
-      requires :id, type: Integer, desc: 'Product ID'
-      requires :name, type: String, desc: 'Product Name'
-      requires :price, type: Integer, desc: 'Product Price'
-    end
-    put 'products/:id' do
-      product = Product.find_by(id: params[:id])
-      error!('Product not found', 404) unless product
-
-      if product.update(name: params[:name], price: params[:price])
-        product
-      else
-        error!(product.errors.full_messages, 400)
-      end
-    end
-
-    #  PATCH 
-    desc 'Partially updates a product'
-    params do
-      requires :id, type: Integer, desc: 'Product ID'
-      optional :name, type: String, desc: 'Product Name'
-      optional :price, type: Integer, desc: 'Product Price'
-    end
-    patch 'products/:id' do
-      product = Product.find_by(id: params[:id])
-      error!('Product not found', 404) unless product
-
-      if product.update(declared(params, include_missing: false))
-        product
-      else
-        error!(product.errors.full_messages, 400)
-      end
-    end
-
-    #  DELETE 
-    desc 'Deletes a product'
-    params do
-      requires :id, type: Integer, desc: 'Product ID'
-    end
-    delete 'products/:id' do
-      product = Product.find_by(id: params[:id])
-      error!('Product not found', 404) unless product
-
-      product.destroy
-      { message: 'Product deleted successfully' }
-    end
-
-    #  Swagger Documentation
+    # Swagger Documentation
     add_swagger_documentation(
       info: {
         title: 'My Grape API',
@@ -99,8 +95,7 @@ module Api
         basic_auth: {
           type: 'basic'
         }
-      },
-      security: [{ basic_auth: [] }] 
+      }
     )
   end
 end
